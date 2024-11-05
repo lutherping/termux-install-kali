@@ -1,0 +1,248 @@
+#!/data/data/com.termux/files/usr/bin/bash -e
+# 版权所有 ©2018 Hax4Us 保留所有权利 🌎 🌍 🌏 🌐 🗺
+# https://hax4us.com
+# 修复 @https://github.com/lutherping
+################################################################################
+
+# 颜色设置
+red='\033[1;31m'
+yellow='\033[1;33m'
+blue='\033[1;34m'
+reset='\033[0m'
+
+# 清理工作，移除所有名为 "kali*" 的目录
+pre_cleanup() {
+        find $HOME -name "kali*" -type d -exec rm -rf {} \; || :
+} 
+
+# 清理工作，移除所有名为 "kalifs*" 的文件
+post_cleanup() {
+        find $HOME -name "kalifs*" -type f -exec rm -rf {} \; || :
+} 
+
+# 设置 Chroot 类型
+setchroot() {
+    printf "$blue 访问 https://kali.download/nethunter-images/current/rootfs/ 查看适合您手机的 Chroot 版本\n"
+    printf "请输入数字选择 Chroot 类型：\n"
+    printf "[1] full\n"
+    printf "[2] minimal\n"
+    printf "[3] nano\n"
+    
+    read -p "请输入您的选择 (1/2/3): " choice
+
+    case $choice in
+        1)
+            chroot="full"
+            ;;
+        2)
+            chroot="minimal"
+            ;;
+        3)
+            chroot="nano"
+            ;;
+        *)
+            printf "$red 选择无效，请输入 1、2 或 3.\n"
+            exit 1
+            ;;
+    esac
+    
+    echo "已选择 Chroot 类型: $chroot"
+}
+
+
+# 处理未知架构的情况
+unknownarch() {
+        printf "$red"
+        echo "[*] 未知架构 :("
+        printf "$reset"
+        exit
+}
+
+# 检测系统架构信息
+checksysinfo() {
+        printf "$blue [*] 检查主机架构 ..."
+        case $(getprop ro.product.cpu.abi) in
+                arm64-v8a)
+                        SETARCH=arm64
+                        ;;
+                armeabi|armeabi-v7a)
+                        SETARCH=armhf
+                        ;;
+                *)
+                        unknownarch
+                        ;;
+        esac
+        echo "检测到的架构: $SETARCH"
+}
+
+# 检查所需的包是否已安装
+checkdeps() {
+        printf "${blue}\n"
+        echo " [*] 更新 apt 缓存..."
+        apt update -y &> /dev/null
+        echo " [*] 检查所有所需的工具..."
+
+        for i in proot tar axel; do
+                if [ -e $PREFIX/bin/$i ]; then
+                        echo "  • $i 已安装"
+                else
+                        echo "安装 ${i}..."
+                        apt install -y $i || {
+                                printf "$red"
+                                echo " 错误：请检查您的网络连接或 apt\n 退出..."
+                                printf "$reset"
+                                exit
+                        }
+                fi
+        done
+        apt upgrade -y
+}
+
+# 根据架构设置下载 URL
+seturl() {
+        URL="http://kali.download/nethunter-images/current/rootfs/kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz"
+}
+
+# 下载 tar 文件
+gettarfile() {
+        printf "$blue [*] 获取 tar 文件...$reset\n\n"
+        DESTINATION=$HOME/kali-${SETARCH}
+        seturl
+        mkdir -p $DESTINATION
+        cd $HOME
+        rootfs="kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz"
+        if [ ! -f "$rootfs" ]; then
+            axel ${EXTRAARGS} --alternate "$URL"
+        else
+            printf "${red}[!] 已存在下载的镜像，如镜像损坏或未完全下载，请手动删除并重新下载。$reset\n\n"
+        fi
+}
+
+# 下载 SHA 校验文件
+getsha() {
+        printf "\n${blue} [*] 获取 SHA ... $reset\n\n"
+        if [ -f kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum ]; then
+            rm kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum
+        fi
+        axel ${EXTRAARGS} --alternate "http://kali.download/nethunter-images/current/rootfs/kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum" -o kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum
+}
+
+# 检查文件完整性
+checkintegrity() {
+        printf "\n${blue} [*] 检查文件完整性...\n"
+        echo " [*] 若完整性校验失败，脚本将立即终止"
+        printf ' '
+        sha512sum -c kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum || {
+                printf "$red 抱歉 :( 下载的文件已损坏或未完全下载，请重新运行脚本\n${reset}"
+                exit 1
+        }
+}
+
+# 解压 tar 文件
+extract() {
+        printf "$blue [*] 解压中... $reset\n\n"
+        proot --link2symlink tar -xvf $HOME/kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz -C $HOME 2> /dev/null || {
+            printf "$red 解压过程出现问题。请检查 tar 文件，已经忽略。\n"
+            mv $HOME/chroot/kali-${SETARCH} $HOME
+        }
+}
+
+# 创建登录脚本
+createloginfile() {
+        bin=${PREFIX}/bin/kali
+        cat > $bin <<- EOM
+#!/data/data/com.termux/files/usr/bin/bash -e
+unset LD_PRELOAD
+if [ ! -f $DESTINATION/root/.version ]; then
+    touch $DESTINATION/root/.version
+fi
+user=kali
+home="/home/\$user"
+LOGIN="sudo -u \$user /bin/bash"
+if [[ ("\$#" != "0" && ("\$1" == "-r")) ]]; then
+    user=root
+    home=/\$user
+    LOGIN="/bin/bash --login"
+    shift
+fi
+
+cmd="proot \\
+    --link2symlink \\
+    -0 \\
+    -r ${DESTINATION} \\
+    -b /dev \\
+    -b /proc \\
+    -b $DESTINATION\$home:/dev/shm \\
+    -b /sdcard \\
+    -b $HOME \\
+    -w \$home \\
+    /usr/bin/env -i \\
+    HOME=\$home TERM="\$TERM" \\
+    LANG=\$LANG PATH=/bin:/usr/bin:/sbin:/usr/sbin \\
+    \$LOGIN"
+
+args="\$@"
+if [ "\$#" == 0 ]; then
+    exec \$cmd
+else
+    \$cmd -c "\$args"
+fi
+EOM
+        chmod 700 $bin
+}
+
+# 打印分隔线
+printline() {
+        printf "${blue}\n"
+        echo " #---------------------------------#"
+}
+
+# 开始安装过程
+clear
+EXTRAARGS=""
+if [[ ! -z $1 ]]; then
+    EXTRAARGS=$1
+    if [[ $EXTRAARGS != "--insecure" ]]; then
+                EXTRAARGS=""
+    fi
+fi
+
+printf "\n${yellow} 您即将在 Termux 上安装 Kali Nethunter，无需 Root :) 很酷\n\n"
+
+pre_cleanup
+checksysinfo
+checkdeps
+setchroot
+gettarfile
+getsha
+checkintegrity
+extract
+createloginfile
+post_cleanup
+
+printf "$blue [*] 正在为您配置 Kali ..."
+
+# 配置 resolv.conf
+resolvconf() {
+            # 创建 etc 目录
+             mkdir -p ${DESTINATION}/etc
+            # 创建 resolv.conf 文件
+             printf "\nnameserver 8.8.8.8\nnameserver 8.8.4.4" > ${DESTINATION}/etc/resolv.conf             
+} 
+resolvconf
+
+# 进行最终的配置工作
+finalwork() {
+        DESTINATION=$DESTINATION SETARCH=$SETARCH bash $HOME/clone/AutoInstallKali/env.sh
+} 
+finalwork
+
+printline
+printf "\n${yellow} 现在你可以使用 Kali Nethunter 了，在命令行输入 'kali' 即可进入系统。祝你玩得愉快！\n"
+printline
+printline
+printf "\n${blue} [*] 提示:${yellow} 原始脚本来自 GitHub/Hax4us\n"
+printf "  $blue   [*] 提示:${yellow} 原始脚本来自 GitHub/Hax4us\n"
+printf "  $blue   [*] 提示:${yellow} 原始脚本来自 GitHub/Hax4us\n"
+printline
+printf "$reset"
