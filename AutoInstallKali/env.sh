@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-DESTINATION="${DESTINATION:-$HOME/kali-arm64}"  # 默认路径
-SETARCH="${SETARCH:-arm64}"  # 默认架构，如果为空，设为 "arm64"
+#DESTINATION="${DESTINATION:-$HOME/kali-arm64}"  # 默认路径
+#SETARCH="${SETARCH:-arm64}"  # 默认架构，如果为空，设为 "arm64"
 
 fix_profile() {
     if [ -f $HOME/kali-${SETARCH}/root/.bash_profile ]; then
