@@ -233,7 +233,7 @@ resolvconf
 
 # 进行最终的配置工作
 finalwork() {
-        DESTINATION=$DESTINATION SETARCH=$SETARCH bash $HOME/clone/AutoInstallKali/env.sh
+        DESTINATION=$DESTINATION SETARCH=$SETARCH bash $HOME/AutoInstallKali/env.sh
 } 
 finalwork
 
