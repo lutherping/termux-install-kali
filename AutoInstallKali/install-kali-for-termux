@@ -119,24 +119,24 @@ gettarfile() {
 }
 
 # 下载 SHA 校验文件
-getsha() {
-        printf "\n${blue} [*] 获取 SHA ... $reset\n\n"
-        if [ -f kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum ]; then
-            rm kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum
-        fi
-        axel ${EXTRAARGS} --alternate "http://kali.download/nethunter-images/current/rootfs/kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum" -o kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum
-}
+#getsha() {
+#        printf "\n${blue} [*] 获取 SHA ... $reset\n\n"
+#        if [ -f kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum ]; then
+#            rm kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum
+#        fi
+#        axel ${EXTRAARGS} --alternate "http://kali.download/nethunter-images/current/rootfs/kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum" -o kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum
+#}
 
 # 检查文件完整性
-checkintegrity() {
-        printf "\n${blue} [*] 检查文件完整性...\n"
-        echo " [*] 若完整性校验失败，脚本将立即终止"
-        printf ' '
-        sha512sum -c kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum || {
-                printf "$red 抱歉 :( 下载的文件已损坏或未完全下载，请重新运行脚本\n${reset}"
-                exit 1
-        }
-}
+#checkintegrity() {
+#        printf "\n${blue} [*] 检查文件完整性...\n"
+#        echo " [*] 若完整性校验失败，脚本将立即终止"
+#        printf ' '
+#        sha512sum -c kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz.sha512sum || {
+#                printf "$red 抱歉 :( 下载的文件已损坏或未完全下载，请重新运行脚本\n${reset}"
+#                exit 1
+#        }
+#}
 
 # 解压 tar 文件
 extract() {
