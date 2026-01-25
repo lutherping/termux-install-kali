@@ -143,7 +143,6 @@ extract() {
         printf "$blue [*] 解压中... $reset\n\n"
         proot --link2symlink tar -xvf $HOME/kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz -C $HOME 2> /dev/null || {
             printf "$red 解压过程出现问题。请检查 tar 文件，已经忽略。\n"
-            mv $HOME/chroot/kali-${SETARCH} $HOME
         }
 }
 
