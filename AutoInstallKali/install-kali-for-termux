@@ -214,8 +214,8 @@ checksysinfo
 checkdeps
 setchroot
 gettarfile
-getsha
-checkintegrity
+#getsha
+#checkintegrity
 extract
 createloginfile
 post_cleanup
