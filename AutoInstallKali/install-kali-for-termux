@@ -154,19 +154,36 @@ getchecksum() {
 }
 
 checkintegrity() {
-    printf "$blue[*] 校验文件完整性 (SHA256)...$reset\n"
+    printf "$blue[*] 校验文件完整性 (SHA256)...$reset
+"
     cd "$HOME"
     if [ ! -f "SHA256SUMS" ]; then
-        printf "$yellow[!] 无校验文件，跳过。$reset\n"
+        printf "$yellow[!] 无校验文件，跳过。$reset
+"
         return
     fi
-    grep "$rootfs" SHA256SUMS | sha256sum -c --status 2>/dev/null && {
-        printf "  校验通过 ✓\n"
-    } || {
-        printf "$red  校验失败！下载的文件可能已损坏。\n"
-        printf "  请删除 $rootfs 后重新运行脚本。$reset\n"
+    # SHA256SUMS 文件名带版本号，下载文件名不带，用后缀匹配
+    local expected=$(grep "rootfs-${chroot}-${SETARCH}.tar.xz" SHA256SUMS | awk '{print $1}')
+    local actual=$(sha256sum "$rootfs" | awk '{print $1}')
+    if [ -z "$expected" ]; then
+        printf "$yellow[!] SHA256SUMS 中未找到匹配项，跳过。$reset
+"
+        return
+    fi
+    if [ "$expected" = "$actual" ]; then
+        printf "  校验通过
+"
+    else
+        printf "$red  校验失败！下载的文件可能已损坏。$reset
+"
+        printf "$red  期望: $expected$reset
+"
+        printf "$red  实际: $actual$reset
+"
+        printf "$red  请删除 $rootfs 和 SHA256SUMS 后重新运行脚本。$reset
+"
         exit 1
-    }
+    fi
 }
 
 # ==================== 解压 ====================
