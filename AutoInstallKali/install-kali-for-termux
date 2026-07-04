@@ -227,19 +227,37 @@ extract() {
         exit 1
     fi
     printf "  文件大小: $fsize bytes\n"
-
-    # 解压 (显示进度)
-    printf "  正在解压...\n"
-    if proot --link2symlink tar -xvf "$rootfs" -C "$HOME"; then
-        printf "  解压完成\n"
-    elif tar -xvf "$rootfs" -C "$HOME"; then
-        printf "  解压完成 (直接 tar)\n"
+    # 解压 (Android 环境下权限/所有者设置失败属正常，exit code 2 可忽略)
+    printf "  正在解压 (可能需要几分钟)...
+"
+    local ret=0
+    # 用临时文件记录 stderr，避免管道吞掉 tar 的实际退出码
+    proot --link2symlink tar -xf "$rootfs" -C "$HOME" 2>/tmp/tar-error.log; ret=$?
+    # 显示非权限相关的错误
+    grep -vE '(Cannot change ownership|Cannot set permissions|无法设置)' /tmp/tar-error.log 2>/dev/null || true
+    rm -f /tmp/tar-error.log
+    if [ "$ret" -eq 0 ] || [ "$ret" -eq 2 ]; then
+        if [ -d "$DESTINATION/bin" ] || [ -d "$DESTINATION/etc" ]; then
+            printf "  解压完成"
+            [ "$ret" -eq 2 ] && printf " (忽略权限警告)"
+            printf "
+"
+        else
+            printf "
+$red  解压不完整，关键目录缺失。请删除后重试。$reset
+"
+            exit 1
+        fi
     else
-        local ret=$?
-        printf "\n$red  解压失败！(exit code: $ret)$reset\n"
-        printf "$red  可能原因: 磁盘空间不足、tar 文件损坏、权限问题。$reset\n"
-        printf "$red  手动调试: tar -xvf $HOME/$rootfs -C $HOME$reset\n"
+        printf "
+$red  解压失败！(exit code: $ret)$reset
+"
+        printf "$red  可能原因: 磁盘空间不足、tar 文件损坏。$reset
+"
+        printf "$red  手动调试: tar -xf $HOME/$rootfs -C $HOME$reset
+"
         exit 1
+    fi
     fi
 }
 
