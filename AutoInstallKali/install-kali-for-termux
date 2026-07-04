@@ -232,10 +232,10 @@ extract() {
 "
     local ret=0
     # 用临时文件记录 stderr，避免管道吞掉 tar 的实际退出码
-    proot --link2symlink tar -xf "$rootfs" -C "$HOME" 2>/tmp/tar-error.log; ret=$?
+    proot --link2symlink tar -xf "$rootfs" -C "$HOME" 2>$HOME/tar-error.log; ret=$?
     # 显示非权限相关的错误
-    grep -vE '(Cannot change ownership|Cannot set permissions|无法设置)' /tmp/tar-error.log 2>/dev/null || true
-    rm -f /tmp/tar-error.log
+    grep -vE '(Cannot change ownership|Cannot set permissions|无法设置)' $HOME/tar-error.log 2>/dev/null || true
+    rm -f $HOME/tar-error.log
     if [ "$ret" -eq 0 ] || [ "$ret" -eq 2 ]; then
         if [ -d "$DESTINATION/bin" ] || [ -d "$DESTINATION/etc" ]; then
             printf "  解压完成"
