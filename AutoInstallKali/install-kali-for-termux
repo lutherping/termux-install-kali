@@ -112,10 +112,27 @@ gettarfile() {
     mkdir -p "$DESTINATION"
     cd "$HOME"
     rootfs="kali-nethunter-rootfs-${chroot}-${SETARCH}.tar.xz"
-
     if [ -f "$rootfs" ]; then
-        printf "${yellow}[!] 已存在 $rootfs，跳过下载。如文件损坏请手动删除后重试。${reset}\n"
-        return
+        # 如果已下载 SHA256SUMS，先校验已有文件
+        if [ -f "SHA256SUMS" ]; then
+            local expected=$(grep "rootfs-${chroot}-${SETARCH}.tar.xz" SHA256SUMS | awk '{print $1}')
+            if [ -n "$expected" ]; then
+                local actual=$(sha256sum "$rootfs" | awk '{print $1}')
+                if [ "$expected" = "$actual" ]; then
+                    printf "  已有 $rootfs 且校验通过，跳过下载
+"
+                    return
+                else
+                    printf "${yellow}[!] 已有文件校验失败，将重新下载${reset}
+"
+                    rm -f "$rootfs"
+                fi
+            fi
+        else
+            printf "${yellow}[!] 已存在 $rootfs，跳过下载 (无校验文件，如损坏请手动删除)
+"
+            return
+        fi
     fi
 
     printf "  下载地址: $URL\n"
@@ -309,8 +326,8 @@ pre_cleanup
 checksysinfo
 checkdeps
 setchroot
-gettarfile
 getchecksum
+gettarfile
 checkintegrity
 extract
 createloginfile
