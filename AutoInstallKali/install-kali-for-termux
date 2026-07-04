@@ -208,6 +208,12 @@ checkintegrity() {
 extract() {
     printf "$blue[*] 解压 rootfs 到 $DESTINATION ...$reset\n"
     cd "$HOME"
+    # 如果已解压，跳过
+    if [ -d "$DESTINATION/bin" ] && [ -d "$DESTINATION/etc" ]; then
+        printf "  $DESTINATION 已存在，跳过解压
+"
+        return
+    fi
 
     # 检查磁盘空间
     local avail=$(df -h "$HOME" 2>/dev/null | awk 'NR==2 {print $4}')
