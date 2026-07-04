@@ -191,39 +191,10 @@ checkintegrity() {
 extract() {
     printf "$blue[*] 解压 rootfs 到 $DESTINATION ...$reset\n"
     cd "$HOME"
-
-    # 检查磁盘空间
-    local avail=$(df -h "$HOME" 2>/dev/null | awk 'NR==2 {print $4}')
-    if [ -n "$avail" ]; then
-        printf "  磁盘剩余: $avail\n"
-    fi
-
-    # 检查 tar 文件
-    if [ ! -f "$rootfs" ]; then
-        printf "$red  未找到 $rootfs，请重新下载。$reset\n"
+    proot --link2symlink tar -xf "$rootfs" -C "$HOME" 2>/dev/null || {
+        printf "\n$red 解压失败。请检查磁盘空间和 tar 文件完整性。$reset\n"
         exit 1
-    fi
-    local fsize=$(stat -c%s "$rootfs" 2>/dev/null || stat -f%z "$rootfs" 2>/dev/null || echo 0)
-    if [ "$fsize" -lt 1048576 ]; then
-        printf "$red  $rootfs 文件过小 ($fsize bytes)，可能下载不完整。$reset\n"
-        printf "$red  请删除后重试: rm $HOME/$rootfs$reset\n"
-        exit 1
-    fi
-    printf "  文件大小: $fsize bytes\n"
-
-    # 解压 (显示进度)
-    printf "  正在解压...\n"
-    if proot --link2symlink tar -xvf "$rootfs" -C "$HOME"; then
-        printf "  解压完成\n"
-    elif tar -xvf "$rootfs" -C "$HOME"; then
-        printf "  解压完成 (直接 tar)\n"
-    else
-        local ret=$?
-        printf "\n$red  解压失败！(exit code: $ret)$reset\n"
-        printf "$red  可能原因: 磁盘空间不足、tar 文件损坏、权限问题。$reset\n"
-        printf "$red  手动调试: tar -xvf $HOME/$rootfs -C $HOME$reset\n"
-        exit 1
-    fi
+    }
 }
 
 # ==================== 登录脚本 ====================
